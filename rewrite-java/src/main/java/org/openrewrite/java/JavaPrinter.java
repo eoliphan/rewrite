@@ -1207,7 +1207,7 @@ public class JavaPrinter<P> extends JavaVisitor<PrintOutputCapture<P>> {
     @Override
     public J visitVariable(VariableDeclarations.NamedVariable variable, PrintOutputCapture<P> p) {
         beforeSyntax(variable, Space.Location.VARIABLE_PREFIX, p);
-        visit(variable.getName(), p);
+        visit(variable.getDeclarator(), p);
         for (JLeftPadded<Space> dimension : variable.getDimensionsAfterName()) {
             visitSpace(dimension.getBefore(), Space.Location.DIMENSION_PREFIX, p);
             p.append('[');
