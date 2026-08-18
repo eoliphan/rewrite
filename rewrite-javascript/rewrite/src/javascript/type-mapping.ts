@@ -461,11 +461,17 @@ export class JavaScriptTypeMapping {
             return functionType;
         }
 
-        // For anonymous object types that could have circular references
+        // For anonymous object types that could have circular references, use the same
+        // shell-cache treatment anonymous function types get above: create the stub, cache it
+        // BEFORE populating, then populate. Any recursive reference finds the cached shell, so
+        // the cycle the previous `return Type.unknownType` avoided cannot form.
         if (type.flags & ts.TypeFlags.Object) {
             const objectFlags = (type as ts.ObjectType).objectFlags;
             if (objectFlags & ts.ObjectFlags.Anonymous) {
-                return Type.unknownType;
+                const classType = this.createEmptyClassType(type);
+                this.typeCache.set(signature, classType);
+                this.populateClassType(classType, type);
+                return classType;
             }
         }
 
@@ -503,6 +509,42 @@ export class JavaScriptTypeMapping {
         // Last resort: use type string with a prefix to distinguish from numeric IDs
         // This might happen for synthetic types or types without declarations
         return `synthetic:${typeString}`;
+    }
+
+    /**
+     * Synthesize a constructor `Type.Method` for an object literal.
+     *
+     * `J.NewClass.getType()` returns `constructorType.getReturnType()`, so without a
+     * constructorType the literal node carries no type at all. TypeScript has no construct
+     * signature for an object literal, so `methodType()` — gated on `isCallOrNewExpression` —
+     * returns undefined for these nodes.
+     *
+     * This derives from the already-cached class type produced by the anonymous-object branch of
+     * `getType`, so it introduces no new cache key and cannot collide with the members-side
+     * signature.
+     */
+    objectLiteralConstructorType(node: ts.Node): Type.Method | undefined {
+        const literalType = this.type(node);
+        if (!literalType || literalType.kind !== Type.Kind.Class) {
+            return undefined;
+        }
+        const declaringType = literalType as Type.Class;
+        return {
+            kind: Type.Kind.Method,
+            flags: 0,
+            declaringType: declaringType,
+            name: "<constructor>",
+            returnType: declaringType,
+            parameterNames: [],
+            parameterTypes: [],
+            thrownExceptions: [],
+            annotations: [],
+            defaultValue: undefined,
+            declaredFormalTypeNames: [],
+            toJSON: function () {
+                return Type.signature(this);
+            }
+        } as Type.Method;
     }
 
     primitiveType(node: ts.Node): Type.Primitive {

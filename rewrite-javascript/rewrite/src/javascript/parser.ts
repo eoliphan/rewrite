@@ -2076,7 +2076,7 @@ export class JavaScriptParserVisitor {
             new: emptySpace,
             arguments: emptyContainer(),
             body: this.convertPropertyAssignments(node.getChildren(this.sourceFile).slice(-3)),
-            constructorType: this.mapMethodType(node)
+            constructorType: this.mapObjectLiteralConstructorType(node)
         };
     }
 
@@ -4496,6 +4496,10 @@ export class JavaScriptParserVisitor {
 
     private mapMethodType(node: ts.Node): Type.Method | undefined {
         return this.typeMapping?.methodType(node);
+    }
+
+    private mapObjectLiteralConstructorType(node: ts.Node): Type.Method | undefined {
+        return this.typeMapping?.objectLiteralConstructorType(node);
     }
 
     private mapAnnotationType(node: ts.Node): Type.FullyQualified | undefined {
