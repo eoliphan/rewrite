@@ -233,6 +233,47 @@ export namespace Type {
     });
 
     /**
+     * PROTOTYPE (issue 8534): reserved names distinguishing a DECLARED `any` / `unknown` from a
+     * genuine type-attribution failure. Follows the FUNCTION_TYPE_NAME convention above — a
+     * non-ASCII name that cannot collide with a real identifier.
+     *
+     * These are Type.Class values, so they cross the RPC boundary as the already-known Java FQN
+     * string for JavaType$Class. No new Java type and no Java model change is required.
+     */
+    export const ANY_TYPE_NAME = '\u{1D44E}';        // mathematical italic small a
+    export const UNKNOWN_TYPE_NAME = '\u{1D462}';    // mathematical italic small u
+
+    function reservedClass(fullyQualifiedName: string): Type.Class {
+        return asRef({
+            kind: Type.Kind.Class,
+            flags: 0,
+            classKind: Type.Class.Kind.Interface,
+            fullyQualifiedName: fullyQualifiedName,
+            typeParameters: [],
+            annotations: [],
+            interfaces: [],
+            members: [],
+            methods: []
+        }) as Type.Class;
+    }
+
+    /** A parameter or expression DECLARED `any`. Deliberate and resolved, not a failure. */
+    export const anyType: Type = reservedClass(ANY_TYPE_NAME);
+
+    /** A parameter or expression DECLARED `unknown`. Also deliberate and resolved. */
+    export const unknownKeywordType: Type = reservedClass(UNKNOWN_TYPE_NAME);
+
+    export function isAnyType(type?: Type): boolean {
+        return type?.kind === Type.Kind.Class &&
+            (type as Type.Class).fullyQualifiedName === ANY_TYPE_NAME;
+    }
+
+    export function isUnknownKeywordType(type?: Type): boolean {
+        return type?.kind === Type.Kind.Class &&
+            (type as Type.Class).fullyQualifiedName === UNKNOWN_TYPE_NAME;
+    }
+
+    /**
      * Type guard that checks if an unknown value is a JavaType.
      * All JavaType kinds start with 'org.openrewrite.java.tree.JavaType$'.
      */

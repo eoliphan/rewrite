@@ -214,13 +214,23 @@ export class JavaScriptTypeMapping {
     }
 
     private getType(type: ts.Type): Type {
-        // Check for error types first - these indicate type-checking failures
-        // and should not be processed further
+        // PROTOTYPE (issue 8534): discriminate a DECLARED `any` from a genuine attribution failure.
+        // TypeScript already tells the two apart via intrinsicName; previously both fell through to
+        // the same payload-free Type.unknownType, so a consumer could not distinguish "the author
+        // deliberately opted out of typing" from "we failed to type this".
         if (type.flags & ts.TypeFlags.Any) {
             const intrinsicName = (type as any).intrinsicName;
             if (intrinsicName === 'error') {
+                // Genuine type-checking failure. Unchanged behaviour.
                 return Type.unknownType;
             }
+            return Type.anyType;
+        }
+
+        // The `unknown` keyword is likewise deliberate and resolved. There was no TypeFlags.Unknown
+        // branch at all, so it also collapsed onto the failure value.
+        if (type.flags & ts.TypeFlags.Unknown) {
+            return Type.unknownKeywordType;
         }
 
         // A type alias to an intersection or a plain anonymous object (e.g. kafkajs's
